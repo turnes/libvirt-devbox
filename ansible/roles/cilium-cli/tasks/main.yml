@@ -1,0 +1,35 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed cilium-cli version
+  ansible.builtin.command: cilium version --client
+  register: cilium_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether cilium-cli {{ cilium_cli_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    cilium_needs_install: "{{ cilium_version_check.rc != 0 or ('cilium-cli: v' + cilium_cli_version) not in cilium_version_check.stdout }}"
+
+- name: Download and extract cilium-cli {{ cilium_cli_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/cilium/cilium-cli/releases/download/v{{ cilium_cli_version }}/cilium-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+    include:
+      - cilium
+  when: cilium_needs_install
+
+- name: Install cilium bash completion
+  become: true
+  ansible.builtin.shell: cilium completion bash > /etc/bash_completion.d/cilium
+  args:
+    creates: /etc/bash_completion.d/cilium

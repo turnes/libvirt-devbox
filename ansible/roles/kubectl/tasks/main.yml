@@ -1,0 +1,33 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed kubectl version
+  ansible.builtin.command: kubectl version --client
+  register: kubectl_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether kubectl {{ kubectl_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    kubectl_needs_install: "{{ kubectl_version_check.rc != 0 or ('v' + kubectl_version) not in kubectl_version_check.stdout }}"
+
+- name: Download kubectl {{ kubectl_version }}
+  become: true
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/v{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+    force: true
+  when: kubectl_needs_install
+
+- name: Install kubectl bash completion
+  become: true
+  ansible.builtin.shell: kubectl completion bash > /etc/bash_completion.d/kubectl
+  args:
+    creates: /etc/bash_completion.d/kubectl

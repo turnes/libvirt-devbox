@@ -1,0 +1,6 @@
+---
+# List of apt package names to install, e.g.:
+# apt_packages:
+#   - jq
+#   - htop
+apt_packages: []

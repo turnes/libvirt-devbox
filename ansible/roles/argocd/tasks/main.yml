@@ -1,0 +1,33 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed argocd version
+  ansible.builtin.command: argocd version --client
+  register: argocd_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether argocd {{ argocd_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    argocd_needs_install: "{{ argocd_version_check.rc != 0 or ('v' + argocd_version) not in argocd_version_check.stdout }}"
+
+- name: Download argocd {{ argocd_version }}
+  become: true
+  ansible.builtin.get_url:
+    url: "https://github.com/argoproj/argo-cd/releases/download/v{{ argocd_version }}/argocd-linux-amd64"
+    dest: /usr/local/bin/argocd
+    mode: "0755"
+    force: true
+  when: argocd_needs_install
+
+- name: Install argocd bash completion
+  become: true
+  ansible.builtin.shell: argocd completion bash > /etc/bash_completion.d/argocd
+  args:
+    creates: /etc/bash_completion.d/argocd
