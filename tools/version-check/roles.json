@@ -1,0 +1,86 @@
+[
+  {
+    "role": "golang",
+    "anitya_id": 1227,
+    "anitya_name": "go",
+    "var": "golang_version",
+    "file": "ansible/roles/golang/defaults/main.yml"
+  },
+  {
+    "role": "kubectl",
+    "anitya_id": 10954,
+    "anitya_name": "kubernetes",
+    "var": "kubectl_version",
+    "file": "ansible/roles/kubectl/defaults/main.yml"
+  },
+  {
+    "role": "terraform",
+    "anitya_id": 13654,
+    "anitya_name": "terraform",
+    "var": "terraform_version",
+    "file": "ansible/roles/terraform/defaults/main.yml"
+  },
+  {
+    "role": "tofu",
+    "anitya_id": 371292,
+    "anitya_name": "opentofu",
+    "var": "tofu_version",
+    "file": "ansible/roles/tofu/defaults/main.yml"
+  },
+  {
+    "role": "packer",
+    "anitya_id": 5475,
+    "anitya_name": "Packer",
+    "var": "packer_version",
+    "file": "ansible/roles/packer/defaults/main.yml"
+  },
+  {
+    "role": "argocd",
+    "anitya_id": 379888,
+    "anitya_name": "argo-cd",
+    "var": "argocd_version",
+    "file": "ansible/roles/argocd/defaults/main.yml"
+  },
+  {
+    "role": "cilium-cli",
+    "anitya_id": 15570,
+    "anitya_name": "cilium",
+    "var": "cilium_cli_version",
+    "file": "ansible/roles/cilium-cli/defaults/main.yml"
+  },
+  {
+    "role": "helm",
+    "anitya_id": 15046,
+    "anitya_name": "helm",
+    "var": "helm_version",
+    "file": "ansible/roles/helm/defaults/main.yml"
+  },
+  {
+    "role": "kyverno-cli",
+    "anitya_id": 380731,
+    "anitya_name": "kyverno",
+    "var": "kyverno_cli_version",
+    "file": "ansible/roles/kyverno-cli/defaults/main.yml"
+  },
+  {
+    "role": "istioctl",
+    "anitya_id": 318484,
+    "anitya_name": "istio",
+    "var": "istioctl_version",
+    "file": "ansible/roles/istioctl/defaults/main.yml"
+  },
+  {
+    "role": "kustomize",
+    "anitya_id": 21003,
+    "anitya_name": "kustomize",
+    "var": "kustomize_version",
+    "file": "ansible/roles/kustomize/defaults/main.yml"
+  },
+  {
+    "role": "uv",
+    "anitya_id": 372636,
+    "anitya_name": "uv",
+    "var": "uv_version",
+    "file": "ansible/roles/uv/defaults/main.yml"
+  }
+]
