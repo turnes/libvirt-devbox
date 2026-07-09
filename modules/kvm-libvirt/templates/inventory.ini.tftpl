@@ -1,0 +1,2 @@
+[vm]
+${vm_name} ansible_host=${ip} ansible_user=${ssh_user} ansible_ssh_private_key_file=${ssh_key} ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null%{ if proxy_command != "" } -o ProxyCommand="${proxy_command}"%{ endif }'
