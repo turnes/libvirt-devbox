@@ -1,0 +1,29 @@
+---
+- hosts: vm
+  gather_facts: true
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:
+
+  roles:
+    - apt-packages
+    - git
+    - golang
+    - uv
+    - docker
+    - kvm
+    - kubectl
+    - helm
+    - kustomize
+    - argocd
+    - cilium-cli
+    - kyverno-cli
+    - istioctl
+    - terraform
+    - tofu
+    - packer
+    - ansible
+    - aws-cli
+    #- azure-cli
+    - gcloud-cli
+    - vscode
