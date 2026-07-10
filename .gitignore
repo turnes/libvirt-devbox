@@ -18,3 +18,6 @@ terraform.rc
 *.retry
 .vault_pass
 vault_pass.txt
+
+# VM images
+.images
