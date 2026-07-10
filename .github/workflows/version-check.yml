@@ -1,0 +1,62 @@
+name: version-check
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/version-check/go.mod
+
+      - name: Run version-check
+        working-directory: tools/version-check
+        run: |
+          go run . -apply -table ../../VERSIONS.md -repo-root ../.. -map roles.json | tee "$RUNNER_TEMP/version-check-output.txt"
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push bump branch
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B chore/version-bump
+          git add -A
+          git commit -m "chore: bump outdated tool versions"
+          git push --force origin chore/version-bump
+
+      - name: Create or update PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh pr view chore/version-bump --json number >/dev/null 2>&1; then
+            gh pr edit chore/version-bump --body-file "$RUNNER_TEMP/version-check-output.txt"
+          else
+            gh pr create --base dev --head chore/version-bump \
+              --title "chore: bump outdated tool versions" \
+              --body-file "$RUNNER_TEMP/version-check-output.txt"
+          fi

@@ -1,0 +1,39 @@
+---
+- name: Install bash-completion and unzip
+  become: true
+  ansible.builtin.apt:
+    name:
+      - bash-completion
+      - unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed tofu version
+  ansible.builtin.command: tofu version
+  register: tofu_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether tofu {{ tofu_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    tofu_needs_install: "{{ tofu_version_check.rc != 0 or ('v' + tofu_version) not in tofu_version_check.stdout }}"
+
+- name: Download and extract tofu {{ tofu_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/opentofu/opentofu/releases/download/v{{ tofu_version }}/tofu_{{ tofu_version }}_linux_amd64.zip"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+  when: tofu_needs_install
+
+# tofu has no `completion bash` subcommand; a static completion script is
+# used instead (same mechanism as terraform, which it forked from).
+- name: Install tofu bash completion
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/bash_completion.d/tofu
+    mode: "0644"
+    content: |
+      complete -C /usr/local/bin/tofu tofu

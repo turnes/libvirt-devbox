@@ -1,0 +1,41 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed helm version
+  ansible.builtin.command: helm version --short
+  register: helm_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether helm {{ helm_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    helm_needs_install: "{{ helm_version_check.rc != 0 or ('v' + helm_version) not in helm_version_check.stdout }}"
+
+- name: Download and extract helm {{ helm_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://get.helm.sh/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: helm_needs_install
+
+- name: Install helm binary
+  become: true
+  ansible.builtin.copy:
+    src: /tmp/linux-amd64/helm
+    dest: /usr/local/bin/helm
+    mode: "0755"
+    remote_src: true
+  when: helm_needs_install
+
+- name: Install helm bash completion
+  become: true
+  ansible.builtin.shell: helm completion bash > /etc/bash_completion.d/helm
+  args:
+    creates: /etc/bash_completion.d/helm

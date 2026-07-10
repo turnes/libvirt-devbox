@@ -1,0 +1,13 @@
+---
+- name: Install Ansible
+  become: true
+  ansible.builtin.apt:
+    name:
+      - ansible
+      - bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+# The Ubuntu ansible package ships bash completion for ansible-* commands
+# under /usr/share/bash-completion/completions/, sourced automatically by
+# the bash-completion package above.

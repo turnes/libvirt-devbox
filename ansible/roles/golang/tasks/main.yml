@@ -1,0 +1,40 @@
+---
+- name: Check currently installed go version
+  ansible.builtin.command: /usr/local/go/bin/go version
+  register: go_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether go {{ golang_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    golang_needs_install: "{{ go_version_check.rc != 0 or ('go' + golang_version + ' ') not in go_version_check.stdout }}"
+
+- name: Download and extract go {{ golang_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://go.dev/dl/go{{ golang_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: golang_needs_install
+
+- name: Remove the previously installed go version
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/go
+    state: absent
+  when: golang_needs_install
+
+- name: Move go {{ golang_version }} into place
+  become: true
+  ansible.builtin.command: mv /tmp/go /usr/local/go
+  when: golang_needs_install
+
+- name: Add go to PATH for all users
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/profile.d/golang.sh
+    mode: "0644"
+    content: |
+      export PATH="/usr/local/go/bin:${PATH}"
+# go has no `completion bash` subcommand and no shell completion story of
+# its own, so none is installed here.
