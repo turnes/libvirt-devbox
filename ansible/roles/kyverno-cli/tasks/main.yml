@@ -1,0 +1,35 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed kyverno-cli version
+  ansible.builtin.command: kyverno version
+  register: kyverno_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether kyverno-cli {{ kyverno_cli_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    kyverno_needs_install: "{{ kyverno_version_check.rc != 0 or ('Version: v' + kyverno_cli_version) not in kyverno_version_check.stdout }}"
+
+- name: Download and extract kyverno-cli {{ kyverno_cli_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/kyverno/kyverno/releases/download/v{{ kyverno_cli_version }}/kyverno-cli_v{{ kyverno_cli_version }}_linux_x86_64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+    include:
+      - kyverno
+  when: kyverno_needs_install
+
+- name: Install kyverno bash completion
+  become: true
+  ansible.builtin.shell: kyverno completion bash > /etc/bash_completion.d/kyverno
+  args:
+    creates: /etc/bash_completion.d/kyverno

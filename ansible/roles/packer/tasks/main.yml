@@ -1,0 +1,39 @@
+---
+- name: Install bash-completion and unzip
+  become: true
+  ansible.builtin.apt:
+    name:
+      - bash-completion
+      - unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed packer version
+  ansible.builtin.command: packer version
+  register: packer_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether packer {{ packer_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    packer_needs_install: "{{ packer_version_check.rc != 0 or ('v' + packer_version) not in packer_version_check.stdout }}"
+
+- name: Download and extract packer {{ packer_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://releases.hashicorp.com/packer/{{ packer_version }}/packer_{{ packer_version }}_linux_amd64.zip"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+  when: packer_needs_install
+
+# packer has no `completion bash` subcommand; a static completion script is
+# used instead (same mitchellh/cli mechanism as terraform).
+- name: Install packer bash completion
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/bash_completion.d/packer
+    mode: "0644"
+    content: |
+      complete -C /usr/local/bin/packer packer

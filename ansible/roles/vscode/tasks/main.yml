@@ -1,0 +1,21 @@
+---
+- name: Check if vscode is already installed
+  ansible.builtin.command: dpkg-query -W code
+  register: vscode_installed
+  failed_when: false
+  changed_when: false
+
+- name: Download the vscode .deb package
+  ansible.builtin.get_url:
+    url: https://update.code.visualstudio.com/latest/linux-deb-x64/stable
+    dest: /tmp/vscode.deb
+    mode: "0644"
+  when: vscode_installed.rc != 0
+
+- name: Install vscode
+  become: true
+  ansible.builtin.apt:
+    deb: /tmp/vscode.deb
+  when: vscode_installed.rc != 0
+# code has no `completion bash` subcommand and no packaged bash-completion
+# script, so none is installed here.

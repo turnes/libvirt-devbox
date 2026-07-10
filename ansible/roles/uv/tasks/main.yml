@@ -1,0 +1,44 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed uv version
+  ansible.builtin.command: uv --version
+  register: uv_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether uv {{ uv_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    uv_needs_install: "{{ uv_version_check.rc != 0 or ('uv ' + uv_version) not in uv_version_check.stdout }}"
+
+- name: Download and extract uv {{ uv_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/astral-sh/uv/releases/download/{{ uv_version }}/uv-x86_64-unknown-linux-gnu.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: uv_needs_install
+
+- name: Install uv and uvx binaries
+  become: true
+  ansible.builtin.copy:
+    src: "/tmp/uv-x86_64-unknown-linux-gnu/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - uv
+    - uvx
+  when: uv_needs_install
+
+- name: Install uv bash completion
+  become: true
+  ansible.builtin.shell: uv generate-shell-completion bash > /etc/bash_completion.d/uv
+  args:
+    creates: /etc/bash_completion.d/uv

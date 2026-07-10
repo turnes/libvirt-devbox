@@ -1,0 +1,43 @@
+---
+# Follows Microsoft's official apt install method for Ubuntu:
+# https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux
+- name: Install prerequisites
+  become: true
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Get dpkg architecture
+  ansible.builtin.command: dpkg --print-architecture
+  register: dpkg_arch
+  changed_when: false
+
+- name: Add the Azure CLI apt repository
+  become: true
+  ansible.builtin.deb822_repository:
+    name: azure-cli
+    types: deb
+    uris: https://packages.microsoft.com/repos/azure-cli/
+    suites: "{{ ansible_distribution_release }}"
+    components: main
+    architectures: "{{ dpkg_arch.stdout }}"
+    signed_by: https://packages.microsoft.com/keys/microsoft.asc
+    state: present
+
+- name: Install azure-cli
+  become: true
+  ansible.builtin.apt:
+    name: azure-cli
+    state: present
+    update_cache: true
+# The azure-cli deb package ships its own bash completion under
+# /etc/bash_completion.d/azure-cli, sourced automatically by the
+# bash-completion package above.

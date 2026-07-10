@@ -1,0 +1,35 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed istioctl version
+  ansible.builtin.command: istioctl version --remote=false -o json
+  register: istioctl_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether istioctl {{ istioctl_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    istioctl_needs_install: "{{ istioctl_version_check.rc != 0 or (istioctl_version_check.stdout | from_json).clientVersion.version != istioctl_version }}"
+
+- name: Download and extract istioctl {{ istioctl_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/istio/istio/releases/download/{{ istioctl_version }}/istioctl-{{ istioctl_version }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+    include:
+      - istioctl
+  when: istioctl_needs_install
+
+- name: Install istioctl bash completion
+  become: true
+  ansible.builtin.shell: istioctl completion bash > /etc/bash_completion.d/istioctl
+  args:
+    creates: /etc/bash_completion.d/istioctl

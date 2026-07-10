@@ -1,0 +1,68 @@
+---
+# Follows Docker's official recommended install method for Ubuntu:
+# https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+- name: Remove conflicting packages
+  become: true
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-doc
+      - docker-compose
+      - docker-compose-v2
+      - podman-docker
+      - containerd
+      - runc
+    state: absent
+
+- name: Install prerequisites
+  become: true
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Add the Docker apt repository
+  become: true
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: deb
+    uris: https://download.docker.com/linux/ubuntu
+    suites: "{{ ansible_distribution_release }}"
+    components: stable
+    signed_by: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Install Docker packages
+  become: true
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Enable and start docker
+  become: true
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Add {{ docker_user }} to the docker group
+  become: true
+  ansible.builtin.user:
+    name: "{{ docker_user }}"
+    groups:
+      - docker
+    append: true
+  when: docker_user is defined
+# docker-ce-cli ships bash completion under
+# /usr/share/bash-completion/completions/docker, sourced automatically by
+# the bash-completion package above.

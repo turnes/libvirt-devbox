@@ -1,0 +1,40 @@
+---
+- name: Install bash-completion and unzip
+  become: true
+  ansible.builtin.apt:
+    name:
+      - bash-completion
+      - unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed terraform version
+  ansible.builtin.command: terraform version
+  register: terraform_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether terraform {{ terraform_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    terraform_needs_install: "{{ terraform_version_check.rc != 0 or ('v' + terraform_version) not in terraform_version_check.stdout }}"
+
+- name: Download and extract terraform {{ terraform_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_amd64.zip"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+  when: terraform_needs_install
+
+# terraform has no `completion bash` subcommand; -install-autocomplete
+# edits the invoking user's rc file interactively, so a static completion
+# script is used instead.
+- name: Install terraform bash completion
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/bash_completion.d/terraform
+    mode: "0644"
+    content: |
+      complete -C /usr/local/bin/terraform terraform

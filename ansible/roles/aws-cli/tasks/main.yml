@@ -1,0 +1,42 @@
+---
+- name: Install bash-completion and unzip
+  become: true
+  ansible.builtin.apt:
+    name:
+      - bash-completion
+      - unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check if aws cli is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/aws
+  register: aws_bin
+
+- name: Download the aws cli v2 installer
+  ansible.builtin.get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    dest: /tmp/awscliv2.zip
+    mode: "0644"
+  when: not aws_bin.stat.exists
+
+- name: Extract the aws cli v2 installer
+  ansible.builtin.unarchive:
+    src: /tmp/awscliv2.zip
+    dest: /tmp
+    remote_src: true
+  when: not aws_bin.stat.exists
+
+- name: Run the aws cli v2 installer
+  become: true
+  ansible.builtin.command: /tmp/aws/install
+  when: not aws_bin.stat.exists
+
+- name: Install aws cli bash completion
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/bash_completion.d/aws
+    mode: "0644"
+    content: |
+      complete -C '/usr/local/bin/aws_completer' aws

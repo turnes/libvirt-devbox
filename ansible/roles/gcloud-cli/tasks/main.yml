@@ -1,0 +1,43 @@
+---
+# Installed from Google's plain tarball instead of their apt repo, which
+# would otherwise require adding their signing key.
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check if gcloud is already installed
+  ansible.builtin.stat:
+    path: /opt/google-cloud-sdk
+  register: gcloud_sdk
+
+- name: Download and extract the Google Cloud CLI
+  become: true
+  ansible.builtin.unarchive:
+    src: https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz
+    dest: /opt
+    remote_src: true
+  when: not gcloud_sdk.stat.exists
+
+- name: Symlink gcloud, gsutil, bq into /usr/local/bin
+  become: true
+  ansible.builtin.file:
+    src: "/opt/google-cloud-sdk/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  loop:
+    - gcloud
+    - gsutil
+    - bq
+
+- name: Install gcloud bash completion
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/bash_completion.d/gcloud
+    mode: "0644"
+    content: |
+      source /opt/google-cloud-sdk/completion.bash.inc

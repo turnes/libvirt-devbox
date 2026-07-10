@@ -1,0 +1,3 @@
+---
+# User to add to the libvirt/kvm groups. Leave unset to skip.
+kvm_user: "{{ ansible_user_id }}"

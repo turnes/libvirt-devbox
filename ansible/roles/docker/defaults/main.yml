@@ -1,0 +1,3 @@
+---
+# User to add to the docker group. Leave unset to skip.
+docker_user: "{{ ansible_user_id }}"

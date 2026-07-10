@@ -1,0 +1,12 @@
+network:
+  version: 2
+  ethernets:
+    ens3:
+      match:
+        macaddress: ${mac_address}
+      set-name: ens3
+      addresses:
+        - ${ip_address}/${prefix}
+      gateway4: ${gateway}
+      nameservers:
+        addresses: ${jsonencode(dns_servers)}

@@ -1,0 +1,35 @@
+---
+- name: Install bash-completion
+  become: true
+  ansible.builtin.apt:
+    name: bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check currently installed kustomize version
+  ansible.builtin.command: kustomize version
+  register: kustomize_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Determine whether kustomize {{ kustomize_version }} needs to be (re)installed
+  ansible.builtin.set_fact:
+    kustomize_needs_install: "{{ kustomize_version_check.rc != 0 or ('v' + kustomize_version) not in kustomize_version_check.stdout }}"
+
+- name: Download and extract kustomize {{ kustomize_version }}
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv{{ kustomize_version }}/kustomize_v{{ kustomize_version }}_linux_amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+    include:
+      - kustomize
+  when: kustomize_needs_install
+
+- name: Install kustomize bash completion
+  become: true
+  ansible.builtin.shell: kustomize completion bash > /etc/bash_completion.d/kustomize
+  args:
+    creates: /etc/bash_completion.d/kustomize

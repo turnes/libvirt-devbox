@@ -1,0 +1,15 @@
+network:
+  version: 2
+  ethernets:
+    kvm-interface:
+      match:
+        macaddress: ${mac_address}
+      #set-name: eth0
+      dhcp4: false
+      addresses:
+        - ${ip_address}/${prefix}
+      routes:
+        - to: default
+          via: ${gateway}
+      nameservers:
+        addresses: ${jsonencode(dns_servers)}

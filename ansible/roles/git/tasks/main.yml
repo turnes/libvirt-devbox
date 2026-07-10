@@ -1,0 +1,13 @@
+---
+- name: Install git
+  become: true
+  ansible.builtin.apt:
+    name:
+      - git
+      - bash-completion
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+# git's Debian package ships its own bash completion under
+# /usr/share/bash-completion/completions/git, sourced automatically by the
+# bash-completion package above - nothing else to install.
