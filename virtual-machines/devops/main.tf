@@ -11,7 +11,7 @@ provider "libvirt" {
 }
 
 module "vm_1" {
-  source = "../modules/kvm-libvirt"
+  source = "../../modules/kvm-libvirt"
 
   vm_name        = "devops"
   vm_ip_address  = "192.168.88.10"
