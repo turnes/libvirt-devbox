@@ -7,7 +7,6 @@ terraform {
 }
 
 provider "libvirt" {
-  #uri = "qemu+ssh://rafael@172.22.1.202/system"
   uri = "qemu+ssh://rafael@172.22.1.202/system?known_hosts_verify=ignore"
 }
 
