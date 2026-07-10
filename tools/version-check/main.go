@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"time"
 )
 
 type roleMapping struct {
@@ -32,6 +34,41 @@ type anityaResponse struct {
 	Items []anityaProject `json:"items"`
 }
 
+type tableRow struct {
+	role    string
+	current string
+	pinned  string
+	latest  string
+	bumped  bool
+}
+
+// processRole compares the on-disk pinned version for m against latest,
+// optionally applying the update, and reports whether m was outdated at
+// the start of the call (independent of whether apply then fixed it).
+func processRole(m roleMapping, latest, repoRoot string, apply bool) (tableRow, bool, error) {
+	filePath := filepath.Join(repoRoot, m.File)
+	current, err := currentVersion(filePath, m.Var)
+	if err != nil {
+		return tableRow{}, false, err
+	}
+
+	row := tableRow{role: m.Role, current: current, pinned: current, latest: latest}
+
+	if current == latest {
+		return row, false, nil
+	}
+
+	if apply {
+		if err := updateVersion(filePath, m.Var, latest); err != nil {
+			return row, true, err
+		}
+		row.pinned = latest
+		row.bumped = true
+	}
+
+	return row, true, nil
+}
+
 func main() {
 	flag.Usage = printHelp
 
@@ -47,6 +84,7 @@ func main() {
 	token := flag.String("token", "", "Anitya API token (optional; sent as a Bearer token)")
 	check := flag.Bool("check", false, "report version drift without modifying any files (default when -apply is not set)")
 	apply := flag.Bool("apply", false, "update defaults files where the pinned version is out of date")
+	table := flag.String("table", "", "path to write a Markdown table of tracked tool versions (only written when at least one role is outdated and nothing failed)")
 	flag.Parse()
 
 	if !*check && !*apply {
@@ -62,6 +100,8 @@ func main() {
 	outdated := 0
 	failed := 0
 
+	var rows []tableRow
+
 	for _, m := range mappings {
 		latest, err := latestStableVersion(client, *token, m)
 		if err != nil {
@@ -70,35 +110,42 @@ func main() {
 			continue
 		}
 
-		filePath := filepath.Join(*repoRoot, m.File)
-		current, err := currentVersion(filePath, m.Var)
+		row, isOutdated, err := processRole(m, latest, *repoRoot, *apply)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%-14s ERROR: %v\n", m.Role, err)
+			if isOutdated {
+				fmt.Printf("%-14s %-14s -> %-14s outdated\n", m.Role, row.current, row.latest)
+				fmt.Fprintf(os.Stderr, "%-14s ERROR applying update: %v\n", m.Role, err)
+			} else {
+				fmt.Fprintf(os.Stderr, "%-14s ERROR: %v\n", m.Role, err)
+			}
 			failed++
 			continue
 		}
 
-		if current == latest {
-			fmt.Printf("%-14s %-14s up to date\n", m.Role, current)
+		if !isOutdated {
+			fmt.Printf("%-14s %-14s up to date\n", m.Role, row.current)
+			rows = append(rows, row)
 			continue
 		}
 
 		outdated++
-		fmt.Printf("%-14s %-14s -> %-14s outdated\n", m.Role, current, latest)
-
-		if *apply {
-			if err := updateVersion(filePath, m.Var, latest); err != nil {
-				fmt.Fprintf(os.Stderr, "%-14s ERROR applying update: %v\n", m.Role, err)
-				failed++
-				continue
-			}
+		fmt.Printf("%-14s %-14s -> %-14s outdated\n", m.Role, row.current, latest)
+		if row.bumped {
 			fmt.Printf("%-14s updated %s in %s\n", m.Role, m.Var, m.File)
 		}
+		rows = append(rows, row)
 	}
 
 	if failed > 0 {
 		os.Exit(2)
 	}
+
+	if shouldWriteTable(*table, outdated, failed) {
+		if err := writeVersionsTable(*table, rows, time.Now().UTC().Format("2006-01-02")); err != nil {
+			fatalf("writing table %s: %v", *table, err)
+		}
+	}
+
 	if outdated > 0 && !*apply {
 		os.Exit(1)
 	}
@@ -140,6 +187,12 @@ Flags:
   -repo-root string
         Repository root that the "file" path in each mapping entry is
         resolved relative to. (default ".")
+
+  -table string
+        Path to write a Markdown table of tracked tool versions (e.g.
+        VERSIONS.md). Only written when at least one role was outdated
+        and no role failed to check. Unset by default, in which case no
+        table is written.
 
 Exit codes:
   0   success (either -apply ran cleanly, or -check found nothing outdated)
@@ -256,4 +309,27 @@ func updateVersion(filePath, varName, newVersion string) error {
 		return fmt.Errorf("writing %s: %w", filePath, err)
 	}
 	return nil
+}
+
+func writeVersionsTable(path string, rows []tableRow, checkedDate string) error {
+	var b strings.Builder
+	b.WriteString("| Role | Pinned version | Latest upstream | Status | Last checked |\n")
+	b.WriteString("| --- | --- | --- | --- | --- |\n")
+	for _, r := range rows {
+		status := "✅ up to date"
+		if r.bumped {
+			status = fmt.Sprintf("⬆️ bumped (was %s)", r.current)
+		} else if r.pinned != r.latest {
+			status = "⚠️ outdated"
+		}
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", r.role, r.pinned, r.latest, status, checkedDate)
+	}
+	return os.WriteFile(path, []byte(b.String()), 0o644)
+}
+
+// shouldWriteTable reports whether the versions table should be (re)written
+// for this run: only when a table path was given, nothing failed, and at
+// least one role was outdated.
+func shouldWriteTable(tablePath string, outdated, failed int) bool {
+	return tablePath != "" && failed == 0 && outdated > 0
 }
